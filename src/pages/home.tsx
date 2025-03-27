@@ -60,8 +60,8 @@ export default function Home() {
             <p className="text-gray-600">
               Download your certificate as a high-quality PNG image ready for printing or sharing.
             </p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="mt-4"
               onClick={() => {
                 try {
@@ -69,12 +69,13 @@ export default function Home() {
                   link.href = './sample-certificate.png';
                   link.download = 'sample-certificate.png';
                   link.click();
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (err) {
                   setError('Failed to download sample certificate');
                 }
               }}
             >
+
               Download Sample
             </Button>
           </div>

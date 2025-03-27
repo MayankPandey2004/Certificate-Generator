@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas-pro';
 
@@ -136,6 +137,7 @@ const CertificateMaker: React.FC = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [pageBorder, setPageBorder] = useState<PageBorder>(DEFAULT_PAGE_BORDER);
   const certificateRef = useRef<HTMLDivElement>(null);
+  const dragStartPos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (elements.length === 0) {
@@ -309,13 +311,25 @@ const CertificateMaker: React.FC = () => {
 
     setSelectedElement(id);
     
-    if (e.target === e.currentTarget) {
+    // Only start dragging if clicking on the element itself (not its children)
+    if (e.currentTarget === e.target) {
       setIsDragging(true);
       const rect = e.currentTarget.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+      
       setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        x: offsetX,
+        y: offsetY
       });
+      
+      dragStartPos.current = {
+        x: element.x,
+        y: element.y
+      };
+      
+      // Prevent text selection during drag
+      document.body.style.userSelect = 'none';
     }
     e.stopPropagation();
   };
@@ -330,15 +344,33 @@ const CertificateMaker: React.FC = () => {
     const x = e.clientX - rect.left - dragOffset.x;
     const y = e.clientY - rect.top - dragOffset.y;
 
-    handleElementChange(selectedElement, { x, y });
+    handleElementChange(selectedElement, { 
+      x: x,
+      y: y
+    });
+
+    // Update cursor style during drag
+    if (certificateRef.current) {
+      certificateRef.current.style.cursor = 'grabbing';
+    }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    if (isDragging) {
+      setIsDragging(false);
+      
+      // Restore cursor style
+      if (certificateRef.current) {
+        certificateRef.current.style.cursor = 'default';
+      }
+      
+      // Restore text selection
+      document.body.style.userSelect = '';
+    }
   };
 
   const handleMouseLeave = () => {
-    setIsDragging(false);
+    handleMouseUp();
   };
 
   const handleContainerClick = (e: React.MouseEvent) => {
@@ -346,6 +378,51 @@ const CertificateMaker: React.FC = () => {
       setSelectedElement(null);
     }
   };
+
+  // Add keyboard arrow key movement
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedElement) return;
+      
+      const moveAmount = e.shiftKey ? 10 : 1; // Move faster with shift key
+      let newX, newY;
+      
+      const element = elements.find(el => el.id === selectedElement);
+      if (!element) return;
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          newY = element.y - moveAmount;
+          handleElementChange(selectedElement, { y: newY });
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          newY = element.y + moveAmount;
+          handleElementChange(selectedElement, { y: newY });
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          newX = element.x - moveAmount;
+          handleElementChange(selectedElement, { x: newX });
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          newX = element.x + moveAmount;
+          handleElementChange(selectedElement, { x: newX });
+          break;
+        case 'Delete':
+          e.preventDefault();
+          deleteElement(selectedElement);
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedElement, elements]);
 
   return (
     <div className="flex h-screen bg-[#f5f7fa]">
@@ -652,6 +729,30 @@ const CertificateMaker: React.FC = () => {
               </div>
             </div>
 
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2 text-[#bdc3c7]">Position:</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-[#bdc3c7]">X:</label>
+                  <input
+                    type="number"
+                    value={elements.find(el => el.id === selectedElement)?.x || 0}
+                    onChange={(e) => handleElementChange(selectedElement, { x: parseInt(e.target.value) })}
+                    className="w-full bg-[#2c3e50] text-white px-2 py-1 rounded border border-[#34495e] focus:outline-none focus:ring-1 focus:ring-[#3498db]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-[#bdc3c7]">Y:</label>
+                  <input
+                    type="number"
+                    value={elements.find(el => el.id === selectedElement)?.y || 0}
+                    onChange={(e) => handleElementChange(selectedElement, { y: parseInt(e.target.value) })}
+                    className="w-full bg-[#2c3e50] text-white px-2 py-1 rounded border border-[#34495e] focus:outline-none focus:ring-1 focus:ring-[#3498db]"
+                  />
+                </div>
+              </div>
+            </div>
+
             <button 
               className="bg-[#e74c3c] hover:bg-[#c0392b] text-white px-4 py-2 rounded transition-colors w-full"
               onClick={() => deleteElement(selectedElement)}
@@ -705,7 +806,7 @@ const CertificateMaker: React.FC = () => {
                 color: element.color || 'inherit',
                 fontFamily: element.fontFamily || 'inherit',
                 fontWeight: element.fontWeight || 'inherit',
-                cursor: 'move',
+                cursor: isDragging && selectedElement === element.id ? 'grabbing' : 'move',
                 userSelect: 'none',
                 zIndex: element.zIndex,
                 transform: element.type === 'image' || (element.type === 'text' && element.textAlign === 'center') 
