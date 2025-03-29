@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Wand2, Download, BookTemplate, AlertCircle } from "lucide-react"
 import { Button } from "../components/button"
-import CertificateMaker from './CertificateMaker';
+import CertificateMaker from '../components/CertificateMaker';
 
 export default function Home() {
   const [error, setError] = useState<string | null>(null);
@@ -83,11 +83,6 @@ export default function Home() {
 
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
           <CertificateMaker />
-        </div>
-
-        <div className="mt-12 text-center text-gray-500 text-sm">
-          <p>Need help? Contact our support team at support@certificategenerator.com</p>
-          <p className="mt-2">© {new Date().getFullYear()} Certificate Generator. All rights reserved.</p>
         </div>
       </div>
     </main>
